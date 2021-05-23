@@ -1,4 +1,4 @@
-# from flask_migrate import Migrate
+from flask_migrate import Migrate
 from os import environ
 from sys import exit
 from decouple import config
@@ -23,7 +23,7 @@ except KeyError:
 app = create_app( app_config )
 
 if DEBUG:
-    app.logger.info('DEBUG       = ' + str(DEBUG)      )
+    app.logger.info('DEBUG       = ' + str(DEBUG))
 
 if __name__ == "__main__":
     app.run()
