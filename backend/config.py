@@ -21,15 +21,6 @@ class ProductionConfig(Config):
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_DURATION = 3600
 
-    # # PostgreSQL database
-    # SQLALCHEMY_DATABASE_URI = '{}://{}:{}@{}:{}/{}'.format(
-    #     config( 'DB_ENGINE'   , default='postgresql'    ),
-    #     config( 'DB_USERNAME' , default='jo'            ),
-    #     config( 'DB_PASS'     , default='joe@2313'      ),
-    #     config( 'DB_HOST'     , default='127.0.0.1'     ),
-    #     config( 'DB_PORT'     , default=5432            ),
-    #     config( 'DB_NAME'     , default='supplier'      )
-    # )
     SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(basedir, 'db.sqlite3')
 
 
