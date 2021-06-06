@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import os
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from local_utils import detect_lp
@@ -50,8 +51,10 @@ def get_plate(image, Dmax=608, Dmin=256):
 class ImageInput:
     # Sample image (for Debugging)
     def sampleImageSingleLP():
-        image_path = "IndianLP/india_car_plate.jpg"
+        image_path = "IndianLP/car.jpg"
         image = Get_image_by_path(image_path)
+        cv2.imshow('image',image)
+        cv2.waitKey(0)
         return image
 
     def sampleImageMultipleLP():
@@ -92,6 +95,22 @@ class LPImageExtraction:
             print('No License plate found')
         return False, []
 
+    def loopLP(img):
+        try:
+            [LpImg],cor = get_plate(img)
+            return True, [LpImg]
+        except:
+            print('No License plate found')
+            pass
+        return False, []
+
+class ImageLoop:
+    def check(image_path):
+        # image_path = glob.glob('C:/Users/Joel Joseph/Desktop/Project/Recon/LPR_Reverse_Engineered/NumberPlates/*.jpg')
+        # print(image_path)
+        image = Get_image_by_path(image_path)
+        return image
+
 class Segmentation:
     def apply(lp_img):
         # img_set[[plate_image, thre_mor, binary], [...] ]
@@ -99,7 +118,7 @@ class Segmentation:
 
         segmented_img = []
         for img in img_set:
-            cont, _  = cv2.findContours(img[2], cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            cont, _  = cv2.findContours(img[2], cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             test_roi = img[0].copy()
             crop_characters = []
             # Width and Height of character
@@ -109,19 +128,20 @@ class Segmentation:
                 (x, y, w, h) = cv2.boundingRect(c)
                 ratio = h/w
                 # Only select contour with defined ratio
-                if 1<=ratio<=3.5:
+                if 1<=ratio<=4:
                     # Select contour which has the height larger than 50% of the plate
                     if h/img[0].shape[0]>=0.5:
                         # Draw bounding box around digit number
-                        cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 2)
-
+                        rect=cv2.rectangle(test_roi, (x, y), (x + w, y + h), (0, 255,0), 2)
+                        cv2.imshow('rect',rect)
+                        cv2.waitKey(0)
                         # Separate number and gibe prediction
                         curr_num = img[1][y:y+h,x:x+w]
                         curr_num = cv2.resize(curr_num, dsize=(digit_w, digit_h))
                         _, curr_num = cv2.threshold(curr_num, 220, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                         crop_characters.append(curr_num)
 
-            print("Detect {} letters...".format(len(crop_characters)))
+            print("Detected {} letters...".format(len(crop_characters)))
             fig = plt.figure(figsize=(10,6))
             segmented_img.append(crop_characters)
 
@@ -137,13 +157,14 @@ class Segmentation:
             plate_image = cv2.convertScaleAbs(lp_img[0], alpha=(255.0))
             # Converting to grayscale and blurring the image
             gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
-            blur = cv2.GaussianBlur(gray,(7,7),0)
+            cv2.imshow('gray',gray)
+            cv2.waitKey(0)
+            blur = cv2.GaussianBlur(gray,(5,5),0)
             # Appling inversed thresh_binary
             binary = cv2.threshold(blur, 180, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
             ## Applied dilation 
-            kernel3 = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+            kernel3 = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
             thre_mor = cv2.morphologyEx(binary, cv2.MORPH_DILATE, kernel3)
-
             result.append([plate_image, thre_mor, binary])
         return result
 
@@ -155,7 +176,6 @@ class Segmentation:
         (cnts, boundingBoxes) = zip(*sorted(zip(cnts, boundingBoxes),
                                             key=lambda b: b[1][i], reverse=reverse))
         return cnts
-
 
 class OCR:
     def run(chars):
@@ -226,8 +246,33 @@ class Execute:
         else:
             print('No LP detected')
 
+    def predcheck():
+        path=glob.glob('NumberPlates/*.jpg')
+        accuracy=81
+        for i in path:
+            print(i)
+            img = ImageLoop.check(i)
+            is_images, lp_img = LPImageExtraction.loopLP(img)
+            if is_images:
+                chars_img_list = Segmentation.apply(lp_img)
 
+                lp_num = []
+                for chars in chars_img_list:
+                    number = OCR.run(chars)
+                    print(number)
+                    lp_num.append(number)
+                base=os.path.basename(i)
+                val=os.path.splitext(base)[0]
+                if(val==number):
+                    accuracy=accuracy
+                else:
+                    accuracy-=1
 
+            else:
+                print('No LP detected')
+                accuracy-=1
+
+        print(accuracy)
 # Preparing pretrained model for vehicle recognition
 wpod_net_path = "wpod-net.json"
 wpod_net = load_model(wpod_net_path)
@@ -246,4 +291,4 @@ print("[INFO] Labels loaded successfully...")
 
 
 if __name__ == '__main__':
-    Execute.camLoop()
+    Execute.sampleSingleLP()
